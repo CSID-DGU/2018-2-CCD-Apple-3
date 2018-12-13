@@ -84,3 +84,11 @@ for(i in 1:length(unchecked_message[,1])){
 }
 
 dbDisconnect(conn)
+
+
+library(httr)
+library(jsonlite)
+jandi_url<-"https://wh.jandi.com/connect-api/webhook/17291415/f555b674ff1704193c813de50d65e378"
+POST(url=jandi_url, body = list(body = "Fatal Error가 발생했습니다", connectColor="#E82C0C", connectInfo = data.frame(title ="Host : dplsvr",description="subs")), encode = "json",
+     add_headers(.headers = c("Accept"= "application/vnd.tosslab.jandi-v2+json","Content-Type"="application/json" )))
+
