@@ -93,8 +93,8 @@ if(length(unchecked_message[,1]) == 0 ){
     print(i)
     print(set_host_qr)
     print(set_grade_qr)
-    dbGetQuery(conn,set_host_qr)
-    dbGetQuery(conn,set_grade_qr)
+    #dbGetQuery(conn,set_host_qr)
+    #dbGetQuery(conn,set_grade_qr)
     if(set_grade == "fatal"){
       users<-dbGetQuery(conn,"select * from USER;")
       alarm_check<-dbGetQuery(conn,"select * from alarm;")
@@ -111,5 +111,5 @@ if(length(unchecked_message[,1]) == 0 ){
       }
     }
   }
+  dbDisconnect(conn)
 }
-dbDisconnect(conn)
