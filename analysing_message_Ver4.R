@@ -24,7 +24,7 @@ conn<-dbConnect(MySQL(), user="example",password="example123",dbname="example", 
 
 #DB에서 정보 가져오기
 #usr<-dbReadTable(conn,"users")
-unchecked_message<-dbGetQuery(conn,"select * from MESSAGE where grade = 'unchecked' AND eno IS NOT NULL;")
+unchecked_message<-dbGetQuery(conn,"select * from MESSAGE where grade = 'unchecked' AND taker IS NOT NULL;")
 host<-data.frame(tolower(dbListFields(conn,"alarm")))
 colnames(host)<-c("kwd")
 
@@ -55,59 +55,60 @@ if(length(unchecked_message[,1]) == 0 ){
     if(tgm$sender == "check@info.kr"){
       set_host <-c("checkserver")
       set_grade<-c("fatal")
-      set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eno='%s' LIMIT 1;",set_host,tgm$eno)
-      set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eno='%s' LIMIT 1;",set_grade,tgm$eno)
+      set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eid='%s' LIMIT 1;",set_host,tgm$eid)
+      set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eid='%s' LIMIT 1;",set_grade,tgm$eid)
       # dbGetQuery(conn, set_host_qr)
       # dbGetQuery(conn, set_grade_qr)
     }else if(tgm$sender == "crash@info.kr"){
       set_host <-c("crash")
       set_grade<-c("fatal")
-      set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eno='%s' LIMIT 1;","crash",tgm$eno)
-      set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eno='%s' LIMIT 1;","fatal",tgm$eno)
+      set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eid='%s' LIMIT 1;","crash",tgm$eid)
+      set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eid='%s' LIMIT 1;","fatal",tgm$eid)
     }else{
       checked_status<-as.character(merge(KeywordParsing(tgm$sub),status, by = "kwd")[1,1])
       checked_host<-as.character(merge(KeywordParsing(tgm$sub),host, by = "kwd")[1,1])
       if(checked_status == "problem" || checked_status == "unknown"){
         set_grade<-c("fatal")
-        set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eno='%s' LIMIT 1;",set_grade,tgm$eno)
+        set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eid='%s' LIMIT 1;",set_grade,tgm$eid)
       }else{
         set_grade<-c("normal")
-        set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eno='%s' LIMIT 1;","normal",tgm$eno)
+        set_grade_qr<-sprintf("UPDATE MESSAGE SET grade ='%s' WHERE eid='%s' LIMIT 1;","normal",tgm$eid)
       }
       if(is.na(checked_host)){
         if(length(merge(KeywordParsing(tgm$body),host, by = "kwd")[,1])>0){
           set_hot<-as.character(merge(KeywordParsing(tgm$body),host, by = "kwd")[1,1])
-          set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eno='%s' LIMIT 1;",set_host,tgm$eno)
+          set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eid='%s' LIMIT 1;",set_host,tgm$eid)
         }else if(length(grep("zabbix",KeywordParsing(tgm$body)$kwd)) && length(grep("server",KeywordParsing(tgm$body)$kwd))){
           set_host <-c("ZabbixServer")
-          set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eno='%s' LIMIT 1;",set_host,tgm$eno)
+          set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eid='%s' LIMIT 1;",set_host,tgm$eid)
         }else{
           set_host <-c("unspecified")
-          set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eno='%s' LIMIT 1;",set_host,tgm$eno)
+          set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eid='%s' LIMIT 1;",set_host,tgm$eid)
         }
       }else{
         set_host<-checked_host
-        set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eno='%s' LIMIT 1;",set_host,tgm$eno)
+        set_host_qr<-sprintf("UPDATE MESSAGE SET host ='%s' WHERE eid='%s' LIMIT 1;",set_host,tgm$eid)
       }
     }
     print(i)
     print(set_host)
     print(set_grade)
-    dbGetQuery(conn,set_host_qr)
-    dbGetQuery(conn,set_grade_qr)
+    # dbGetQuery(conn,set_host_qr)
+    # dbGetQuery(conn,set_grade_qr)
     if(set_grade == "fatal"){
       users<-dbGetQuery(conn,"select * from USER;")
       alarm_check<-dbGetQuery(conn,"select * from alarm;")
       colnames(alarm_check)<-tolower(colnames(alarm_check))
       for(user in 1:length(users[,1])){
         alarm_user<-alarm_check[alarm_check$user_id==users[user,]$user_id,]
-        if(as.integer(!is.na(alarm_user[1,c(set_host)])) >0){
-          jandi_url<-alarm_user$jandi
-          host_title<-sprintf("Host : %s",set_host)
-          POST(url=jandi_url, body = list(body = "Fatal Error가 발생했습니다", connectColor="#E82C0C", connectInfo = data.frame(title =as.character(host_title),description=tgm$sub)), encode = "json",
-               add_headers(.headers = c("Accept"= "application/vnd.tosslab.jandi-v2+json","Content-Type"="application/json" )))
+        if(length(alarm_user[1,c(set_host)]) > 0){
+          if(length(as.data.frame(alarm_user$jandi)[,1])>=1){
+            jandi_url<-alarm_user$jandi
+            host_title<-sprintf("Host : %s",set_host)
+            POST(url=jandi_url, body = list(body = "Fatal Error가 발생했습니다", connectColor="#E82C0C", connectInfo = data.frame(title =as.character(host_title),description=tgm$sub)), encode = "json",
+                 add_headers(.headers = c("Accept"= "application/vnd.tosslab.jandi-v2+json","Content-Type"="application/json" )))
+          }
         }
-
       }
     }
   }
